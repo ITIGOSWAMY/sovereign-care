@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>The Council of Sovereign Care</title>
+<meta name="description" content="Lay it down. What forms while you are gone forms only if you stay away.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Council">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#f2efe9;
+    --dim:#6f6a75;
+    --rose:#d98a76;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --mono: ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;background:#000;color:var(--ink);
+    font-family:var(--mono);overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
+  body{overflow:hidden}
+
+  #stage{position:fixed;inset:0;z-index:0}
+  canvas{display:block;width:100%;height:100%}
+  /* atmosphere arrives as weather, not decoration */
+  #weather{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;
+    transition:opacity 2.4s linear;mix-blend-mode:screen}
+
+  .screen{position:fixed;inset:0;z-index:3;display:none;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    padding:calc(30px + var(--safe-t)) 26px calc(30px + var(--safe-b))}
+  .screen.on{display:flex}
+  #intro,#calib,#result,#history{
+    background:radial-gradient(ellipse at center,
+      rgba(0,0,0,.90) 0%, rgba(0,0,0,.76) 50%, rgba(0,0,0,.46) 100%)}
+
+  /* ── instrument chrome ── */
+  .hud{position:fixed;left:0;right:0;z-index:4;display:none;
+    justify-content:space-between;align-items:baseline;
+    padding:calc(14px + var(--safe-t)) 18px 0;
+    font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--dim)}
+  .hud.on{display:flex}
+  .rec{display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--rose);margin-right:7px;vertical-align:middle;
+    animation:pulse 4.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+
+  h1{font-size:12px;font-weight:400;letter-spacing:.34em;text-transform:uppercase;
+    margin:0 0 26px;line-height:2;color:var(--ink)}
+  .lede{font-size:13.5px;line-height:2.15;letter-spacing:.06em;color:var(--dim);
+    max-width:21rem;margin:0 0 40px}
+  .lede em{font-style:normal;color:var(--ink)}
+  .tag{font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--dim);margin:0 0 30px}
+
+  button{font-family:var(--mono);font-size:11.5px;letter-spacing:.26em;
+    text-transform:uppercase;color:var(--ink);background:transparent;border:0;
+    padding:15px 4px;cursor:pointer;transition:opacity .3s;-webkit-appearance:none}
+  button:active{opacity:.45}
+  button.quiet{color:var(--dim)}
+  .stack{display:flex;flex-direction:column;gap:4px;align-items:center}
+
+  /* ── holding ── */
+  #hold{justify-content:flex-end;pointer-events:none;background:none}
+  #phase{font-size:10px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:6px;transition:opacity 1.6s}
+  #mode{font-size:9px;letter-spacing:.24em;color:var(--dim);opacity:.45}
+
+  /* ── lifted ── */
+  #wobble{background:rgba(0,0,0,.80);backdrop-filter:blur(2px);z-index:5}
+  #wobble .lede{color:var(--ink)}
+  #bar{width:min(210px,56vw);height:1px;background:rgba(217,138,118,.2);margin-top:8px}
+  #fill{height:100%;width:100%;background:var(--rose)}
+
+  /* ── result ── */
+  .dur{font-size:clamp(38px,12vw,58px);font-weight:300;letter-spacing:.04em;
+    font-variant-numeric:tabular-nums;margin:0 0 14px;line-height:1}
+  .verdict{font-size:9.5px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:44px}
+  .rows{width:min(300px,84vw);margin:0 0 40px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;
+    padding:11px 0;border-bottom:1px solid rgba(111,106,117,.16);
+    font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .row b{font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.08em}
+  .closing{font-size:13px;line-height:2.1;letter-spacing:.05em;color:var(--ink);
+    max-width:20rem;margin:0 0 40px;opacity:.86}
+
+  .note{position:fixed;left:0;right:0;bottom:calc(12px + var(--safe-b));z-index:6;
+    font-size:9px;letter-spacing:.16em;color:var(--rose);text-align:center;
+    padding:0 24px;line-height:1.8;opacity:.8;pointer-events:none;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="weather"></div>
+
+<div class="hud" id="hud">
+  <span id="hudLeft">council</span>
+  <span><i class="rec"></i><span id="hudClock">00:00</span></span>
+</div>
+
+<!-- ── INTRO ─────────────────────────────────── -->
+<section id="intro" class="screen on">
+  <p class="tag" id="ritualLabel">[ solo ]</p>
+  <h1>The Council of<br>Sovereign Care</h1>
+  <p class="lede">Lay this down and walk away.<br>
+     <em>What forms while you are gone<br>forms only if you stay gone.</em></p>
+  <div class="stack">
+    <button id="begin">[ begin ]</button>
+    <button class="quiet" id="toHistory">[ record ]</button>
+  </div>
+  <div class="note" id="warn"></div>
+</section>
+
+<!-- ── CALIBRATING ───────────────────────────── -->
+<section id="calib" class="screen">
+  <p class="tag">[ listening to the room ]</p>
+  <p class="lede">Lay me flat.<br>Learning how still this place is.</p>
+  <p class="tag" id="calibdots">·</p>
+</section>
+
+<!-- ── HOLDING ───────────────────────────────── -->
+<section id="hold" class="screen">
+  <div id="phase">[ settling ]</div>
+  <div id="mode"></div>
+</section>
+
+<!-- ── LIFTED ────────────────────────────────── -->
+<section id="wobble" class="screen">
+  <p class="tag">[ lifted ]</p>
+  <p class="lede">Lay it flat and the figure returns.<br>
+     Touch the glass to end here on purpose.</p>
+  <div id="bar"><div id="fill"></div></div>
+</section>
+
+<!-- ── RESULT ────────────────────────────────── -->
+<section id="result" class="screen">
+  <div class="dur" id="rDur">00:00</div>
+  <div class="verdict" id="rVerdict">[ released ]</div>
+  <div class="rows">
+    <div class="row"><span>today</span><b id="sToday">—</b></div>
+    <div class="row"><span>days in a row</span><b id="sStreak">—</b></div>
+    <div class="row"><span>longest</span><b id="sBest">—</b></div>
+    <div class="row"><span>harmonic reached</span><b id="sMode">—</b></div>
+  </div>
+  <p class="closing" id="rClosing"></p>
+  <div class="stack">
+    <button id="share">[ keep the figure ]</button>
+    <button class="quiet" id="again">[ again ]</button>
+  </div>
+</section>
+
+<!-- ── RECORD ────────────────────────────────── -->
+<section id="history" class="screen">
+  <p class="tag">[ record ]</p>
+  <p class="lede" id="hSummary"></p>
+  <div class="rows" id="hRows"></div>
+  <p class="closing" id="hTail"></p>
+  <div class="stack">
+    <button class="quiet" id="hExport">[ export ]</button>
+    <button class="quiet" id="hBack">[ back ]</button>
+  </div>
+</section>
+
+<script>
+'use strict';
+/* ══════════════════════════════════════════════════════════════
+   THE COUNCIL OF SOVEREIGN CARE
+   Saanchie Goswamy
+
+   The figure is a Chladni plate. Sand migrates away from every
+   vibrating region and gathers only at the nodes — the places
+   that are not moving. The pattern is a map of what held still.
+
+   No backend. No account. No network. Nothing leaves this device.
+   ══════════════════════════════════════════════════════════════ */
+
+const P       = new URLSearchParams(location.search);
+const RITUAL  = (P.get('ritual') || 'solo').toLowerCase().slice(0, 24);
+const SEAT    = P.get('seat');
+const GALLERY = SEAT !== null;
+
+const TILT_LIMIT = 20;      // degrees off horizontal
+const TILT_HOLD  = 300;     // ms sustained before it counts as lifted
+const GRACE_MS   = 12000;   // window to lay it back down
+const CAL_MS     = 3000;
+const SPIKE      = 1.35;
+const KEY        = 'council-sovereign-care/v1';
+
+let state = 'intro', startAt = 0, liftedAt = 0, wobbleAt = 0;
+let floorRMS = 0.05, tiltDeg = 0, rms = 0, strain = 0;
+let tiltSince = null, wakeLock = null, calSamples = [], sensorsLive = false;
+
+const $ = id => document.getElementById(id);
+const now = () => performance.now();
+
+/* ── storage ─────────────────────────────────────── */
+const blank = () => ({ sessions: [] });
+function load(){
+  try {
+    const d = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY)) || {});
+    delete d.opens;                       // retired: no longer counted or kept
+    return d;
+  } catch(e){ return blank(); }
+}
+function save(d){ try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){} }
+const today = () => new Date().toLocaleDateString('en-CA');
+let DB = load();
+save(DB);                                 // drops any previously stored open counts
+
+/* ── time ────────────────────────────────────────── */
+function fmt(ms){
+  const s = Math.max(0, Math.floor(ms/1000));
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+  const p = n => String(n).padStart(2,'0');
+  return h ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+}
+function fmtShort(ms){
+  const s = Math.floor(ms/1000);
+  if (s < 60)   return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  return (s/3600).toFixed(1).replace(/\.0$/,'') + 'h';
+}
+
+const todayTotal = () => DB.sessions.filter(s => s.date === today()).reduce((a,s)=>a+s.ms,0);
+const best       = () => DB.sessions.reduce((a,s)=>Math.max(a,s.ms), 0);
+function streak(){
+  const days = new Set(DB.sessions.map(s => s.date));
+  let n = 0; const d = new Date();
+  if (!days.has(d.toLocaleDateString('en-CA'))) d.setDate(d.getDate()-1);
+  while (days.has(d.toLocaleDateString('en-CA'))){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+
+const SCREENS = ['intro','calib','hold','wobble','result','history'];
+const show = id => SCREENS.forEach(s => $(s).classList.toggle('on', s === id));
+
+/* ── keeping the page alive ──────────────────────── */
+async function acquireWake(){
+  if (!('wakeLock' in navigator)) return false;
+  try { wakeLock = await navigator.wakeLock.request('screen'); return true; } catch(e){ return false; }
+}
+function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible'){
+    if (state === 'holding' || state === 'wobble') acquireWake();
+  } else if (state === 'holding' || state === 'wobble'){
+    finish('reclaimed');                  // they went somewhere else
+  }
+});
+if (!('wakeLock' in navigator))
+  $('warn').textContent = 'set auto-lock to never before you begin';
+
+/* ── sensing ─────────────────────────────────────── */
+const buf = [];
+function onMotion(e){
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  sensorsLive = true;
+  const mag = Math.hypot(a.x, a.y, a.z) || 1;
+  tiltDeg = Math.acos(Math.min(1, Math.abs(a.z)/mag)) * 180/Math.PI;
+  const r = e.rotationRate || {};
+  const m = Math.abs(mag - 9.81) + 0.05*Math.hypot(r.alpha||0, r.beta||0, r.gamma||0);
+  const t = now();
+  buf.push({t, m});
+  while (buf.length && buf[0].t < t - 2000) buf.shift();
+  const mean = buf.reduce((s,x)=>s+x.m,0)/buf.length;
+  rms = Math.sqrt(buf.reduce((s,x)=>s+(x.m-mean)**2,0)/buf.length);
+}
+async function requestSensors(){
+  const D = window.DeviceMotionEvent;
+  if (D && typeof D.requestPermission === 'function'){
+    try { if (await D.requestPermission() !== 'granted') return false; }
+    catch(e){ return false; }
+  }
+  window.addEventListener('devicemotion', onMotion, { passive:true });
+  return true;
+}
+
+/* ── session ─────────────────────────────────────── */
+$('begin').addEventListener('click', async () => {
+  const ok = await requestSensors();     // must be first await off the gesture
+  acquireWake();
+  calSamples = []; state = 'calib'; show('calib');
+  const t0 = now();
+  const tick = setInterval(() => {
+    if (sensorsLive) calSamples.push(rms);
+    $('calibdots').textContent = ['·','· ·','· · ·'][Math.floor((now()-t0)/700)%3];
+    if (now() - t0 >= CAL_MS){
+      clearInterval(tick);
+      floorRMS = calSamples.length
+        ? Math.max(0.02, calSamples.sort((a,b)=>a-b)[Math.floor(calSamples.length*0.9)])
+        : 0.05;
+      if (!ok) floorRMS = Infinity;      // no sensors: touch + visibility only
+      startHold();
+    }
+  }, 100);
+});
+
+function startHold(){
+  state = 'holding'; startAt = Date.now(); liftedAt = 0;
+  strain = 0; tiltSince = null;
+  scatter(1);                            // throw the sand before it settles
+  $('hud').classList.add('on');
+  $('hudLeft').textContent = GALLERY ? 'seat ' + SEAT : RITUAL;
+  show('hold');
+}
+
+/* Flat and touched is a reach. Lifted and then touched is a decision. */
+function onReach(){
+  if (state === 'wobble')       finish('tapout');
+  else if (state === 'holding') finish('reclaimed');
+}
+window.addEventListener('touchstart', onReach, { passive:true });
+window.addEventListener('mousedown',  onReach);
+
+function finish(reason){
+  if (state !== 'holding' && state !== 'wobble') return;
+  const endAt = liftedAt || Date.now();  // credit up to the moment of the reach
+  state = 'result'; releaseWake();
+  $('hud').classList.remove('on');
+  $('weather').style.opacity = 0;
+  const ms = Math.max(0, endAt - startAt);
+  DB.sessions.push({
+    start: startAt, ms, reason, ritual: RITUAL,
+    date: new Date(startAt).toLocaleDateString('en-CA'),
+    mode: modeIndex(ms), seat: SEAT || undefined
+  });
+  save(DB);
+  renderResult(ms, reason);
+  show('result');
+}
+
+function enterWobble(){
+  if (state !== 'holding') return;
+  state = 'wobble'; wobbleAt = now(); liftedAt = Date.now();
+  scatter(0.9);
+  show('wobble');
+}
+
+/* ── harmonics: the figure deepens with time ─────── */
+const MODES = [[1,2],[2,3],[3,4],[3,5],[4,5],[5,6],[5,7],[6,7]];
+const modeIndex = ms => Math.min(MODES.length-1, Math.floor(Math.log2(ms/60000 + 1) * 1.55));
+const PHASES = ['settling','first node','the figure holds','it is finding itself',
+                'deepening','fine structure','high harmonic','sovereign'];
+
+function logic(){
+  if (state === 'holding' || state === 'wobble'){
+    const raw = floorRMS === Infinity ? 0
+      : Math.max(0, Math.min(1, (rms - floorRMS) / (floorRMS + SPIKE)));
+    strain += (raw > strain ? 0.25 : 0.02) * (raw - strain);
+  }
+
+  if (state === 'holding'){
+    const t = now();
+    if (tiltDeg > TILT_LIMIT){
+      if (!tiltSince) tiltSince = t;
+      else if (t - tiltSince > TILT_HOLD) enterWobble();
+    } else tiltSince = null;
+    if (floorRMS !== Infinity && rms > floorRMS + SPIKE) enterWobble();
+
+    const el = Date.now() - startAt, i = modeIndex(el);
+    $('hudClock').textContent = fmt(el);
+    $('phase').textContent = '[ ' + PHASES[i] + ' ]';
+    $('mode').textContent  = MODES[i][0] + ' · ' + MODES[i][1];
+    // weather arrives slowly, and only at depth
+    $('weather').style.opacity = Math.min(0.5, Math.max(0, (el/60000 - 8) / 45));
+  }
+
+  if (state === 'wobble'){
+    const left = GRACE_MS - (now() - wobbleAt);
+    $('fill').style.width = Math.max(0, left/GRACE_MS*100) + '%';
+    if (tiltDeg <= TILT_LIMIT && rms < floorRMS + SPIKE){
+      state = 'holding'; liftedAt = 0; tiltSince = null; show('hold');
+    } else if (left <= 0) finish('reclaimed');
+  }
+}
+
+/* ── result ──────────────────────────────────────── */
+const CLOSINGS = [
+  [   60000, 'A beginning is still a beginning.'],
+  [  300000, 'The sand had only started to move.'],
+  [  900000, 'Long enough for something to form.'],
+  [ 1800000, 'The figure found its first fine lines.'],
+  [ 3600000, 'The room stayed still around you.'],
+  [Infinity, 'You were gone a long time. It held.']
+];
+function renderResult(ms, reason){
+  $('rDur').textContent = fmt(ms);
+  $('rVerdict').textContent = reason === 'tapout' ? '[ released ]' : '[ reclaimed ]';
+  $('sToday').textContent  = fmtShort(todayTotal());
+  $('sStreak').textContent = streak();
+  $('sBest').textContent   = fmtShort(best());
+  const i = modeIndex(ms);
+  $('sMode').textContent   = MODES[i][0] + ' · ' + MODES[i][1];
+  $('rClosing').textContent = (CLOSINGS.find(c => ms < c[0]) || CLOSINGS[5])[1];
+}
+
+/* ── record ──────────────────────────────────────── */
+function renderHistory(){
+  const n = DB.sessions.length;
+  $('hSummary').innerHTML = n
+    ? `${n} session${n===1?'':'s'} kept here.<br><em>Nothing has left this device.</em>`
+    : 'Nothing yet.<br><em>And nothing has left this device.</em>';
+  const total = DB.sessions.reduce((a,s)=>a+s.ms,0);
+  $('hRows').innerHTML = [
+    ['total away',  fmtShort(total)],
+    ['longest',     fmtShort(best())],
+    ['days in a row', streak()],
+    ['rituals',     [...new Set(DB.sessions.map(s=>s.ritual))].length]
+  ].map(([k,v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
+  $('hTail').textContent = '';
+  show('history');
+}
+$('toHistory').addEventListener('click', e => { e.stopPropagation(); renderHistory(); });
+$('hBack').addEventListener('click', e => { e.stopPropagation(); state='intro'; show('intro'); });
+$('again').addEventListener('click', e => { e.stopPropagation(); state='intro'; scatter(1); show('intro'); });
+$('hExport').addEventListener('click', e => {
+  e.stopPropagation();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB,null,2)], {type:'application/json'}));
+  a.download = 'sovereign-care-record.json'; a.click();
+});
+
+/* ── keep the figure ─────────────────────────────── */
+$('share').addEventListener('click', async e => {
+  e.stopPropagation();
+  const last = DB.sessions[DB.sessions.length-1] || { ms:0, mode:0 };
+  const S = 1080, cv = document.createElement('canvas');
+  cv.width = S; cv.height = 1350;
+  const x = cv.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0,0,S,1350);
+
+  // settle a plate offline, then print it
+  const [n,m] = MODES[last.mode || 0];
+  const pts = Array.from({length:26000}, () => seed({}));
+  for (let it=0; it<220; it++)
+    for (const p of pts){
+      const step = Math.max(0.0008, Math.abs(chladni(p.x,p.y,n,m)) * 0.050);
+      p.x += (Math.random()-0.5)*step;
+      p.y += (Math.random()-0.5)*step;
+      const dx = p.x*2-1, dy = p.y*2-1, r = Math.hypot(dx,dy);
+      if (r > 1){ const s = (2-r)/r; p.x = 0.5 + dx*s*0.5; p.y = 0.5 + dy*s*0.5; }
+    }
+  const PL = 800, ox = (S-PL)/2, oy = 170;
+  x.fillStyle = 'rgba(242,239,233,.70)';
+  for (const p of pts) x.fillRect(ox + p.x*PL, oy + p.y*PL, 1.15, 1.15);
+  x.beginPath(); x.arc(S/2, oy + PL/2, PL/2, 0, 7);
+  x.strokeStyle = 'rgba(111,106,117,.22)'; x.lineWidth = 1; x.stroke();
+
+  x.textAlign = 'center';
+  x.fillStyle = '#f2efe9';
+  x.font = '300 92px ui-monospace, Menlo, monospace';
+  x.fillText(fmt(last.ms), S/2, 1090);
+  x.fillStyle = '#6f6a75';
+  x.font = '400 20px ui-monospace, Menlo, monospace';
+  x.fillText('A W A Y'.split('').join(' '), S/2, 1145);
+  x.fillText(`[ ${n} · ${m} ]`, S/2, 1200);
+  x.fillStyle = 'rgba(242,239,233,.5)';
+  x.font = '400 19px ui-monospace, Menlo, monospace';
+  x.fillText('THE COUNCIL OF SOVEREIGN CARE'.split('').join(' '), S/2, 1275);
+
+  cv.toBlob(async blob => {
+    const file = new File([blob], 'sovereign-care.png', { type:'image/png' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      try { await navigator.share({ files:[file] }); return; } catch(err){}
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'sovereign-care.png'; a.click();
+  }, 'image/png');
+});
+
+/* ══ THE PLATE ═════════════════════════════════════
+   Stochastic Chladni. Each grain steps randomly by an amount
+   proportional to how hard the plate is vibrating beneath it,
+   so grains freeze wherever the surface is still and the
+   nodal figure emerges on its own. Nobody draws it.
+   ═════════════════════════════════════════════════ */
+const cv = $('c'), ctx = cv.getContext('2d', { alpha:false });
+let W = 0, H = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+}
+window.addEventListener('resize', resize);
+
+/* Circular plate. n counts nodal rings, m counts radial sectors —
+   the rings-and-spokes rosette a real plate makes when it is bowed. */
+function chladni(x, y, n, m){
+  const dx = x*2-1, dy = y*2-1;
+  const r  = Math.hypot(dx, dy);
+  const th = Math.atan2(dy, dx);
+  // angular modes must stay whole or the field tears where atan2 wraps;
+  // the radial term keeps easing, so the plate re-settles instead of jumping
+  const ni = Math.round(n), mi = Math.round(m);
+  return Math.cos(n*Math.PI*r)*Math.cos(mi*th)
+       - 0.35*Math.cos(m*Math.PI*r)*Math.cos(ni*th);
+}
+
+const GRAINS = 5200;
+/* uniform over the disc — sqrt keeps it from bunching in the middle */
+function seed(p){
+  const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
+  p.x = 0.5 + Math.cos(a)*r*0.5; p.y = 0.5 + Math.sin(a)*r*0.5;
+  return p;
+}
+const sand = Array.from({length:GRAINS}, () => seed({ b: 0.35 + Math.random()*0.65 }));
+const scatter = amt => sand.forEach(p => { if (Math.random() < amt) seed(p); });
+
+let nn = 1, mm = 2;                       // eased toward the target harmonic
+
+// the five seats this one cannot reach alone
+const GHOSTS = 5;
+
+function draw(t){
+  logic();
+
+  const live = state === 'holding' || state === 'wobble';
+  const el   = live ? Date.now() - startAt : 0;
+  const [tn, tm] = live ? MODES[modeIndex(el)] : MODES[0];
+  nn += (tn - nn) * 0.004;                // harmonics migrate slowly
+  mm += (tm - mm) * 0.004;
+
+  // trail: grains accumulate into density instead of being redrawn
+  ctx.fillStyle = 'rgba(0,0,0,0.085)';
+  ctx.fillRect(0, 0, W, H);
+
+  const plate = Math.min(W, H) * (live ? 0.94 : 0.66);
+  const ox = (W - plate)/2, oy = (H - plate)/2;
+  const breath = Math.sin(t/2750)*0.5 + 0.5;          // ~5.5s
+  const amp    = 0.052 * (0.80 + 0.30*breath) * (live ? 1 : 1.5);
+  const floorStep = 0.0007 + strain * 0.030;          // agitation blurs the figure
+
+  for (const p of sand){
+    const v = Math.abs(chladni(p.x, p.y, nn, mm));
+    const step = Math.max(floorStep, v * amp);
+    p.x += (Math.random()-0.5)*step;
+    p.y += (Math.random()-0.5)*step;
+    // reflect at the rim rather than clamping, so nothing piles up on the edge
+    const dx = p.x*2-1, dy = p.y*2-1, r = Math.hypot(dx,dy);
+    if (r > 1){ const s = (2-r)/r; p.x = 0.5 + dx*s*0.5; p.y = 0.5 + dy*s*0.5; }
+  }
+
+  const bright = live ? 0.62 : 0.17;
+  const warm   = Math.min(1, strain*1.8);
+  ctx.fillStyle = `rgba(${Math.round(242 - warm*25)},${Math.round(239 - warm*101)},${Math.round(233 - warm*115)},${bright})`;
+  const sz = 1.05;
+  for (const p of sand){
+    ctx.globalAlpha = p.b * bright;
+    ctx.fillRect(ox + p.x*plate, oy + p.y*plate, sz, sz);
+  }
+  ctx.globalAlpha = 1;
+
+  // ── the rim of the plate
+  const cx = W/2, cy = H/2;
+  ctx.beginPath(); ctx.arc(cx, cy, plate/2, 0, 7);
+  ctx.strokeStyle = `rgba(111,106,117,${0.10 + 0.05*breath})`;
+  ctx.lineWidth = 1; ctx.stroke();
+
+  // ── unclaimed seats, on hairlines beyond the rim
+  const gr = Math.min(W,H)*0.475;
+  for (let i=0;i<GHOSTS;i++){
+    const a = -Math.PI/2 + (i+1)*(Math.PI*2/(GHOSTS+1));
+    const gx = cx + Math.cos(a)*gr, gy = cy + Math.sin(a)*gr;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*plate*0.5, cy + Math.sin(a)*plate*0.5);
+    ctx.lineTo(gx, gy);
+    ctx.strokeStyle = `rgba(111,106,117,${0.055 + 0.03*breath})`;
+    ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(gx, gy, 2, 0, 7);
+    ctx.fillStyle = `rgba(111,106,117,${0.22 + 0.14*breath})`; ctx.fill();
+  }
+
+  requestAnimationFrame(draw);
+}
+
+/* ── weather ─────────────────────────────────────── */
+$('weather').style.background =
+  'radial-gradient(120% 78% at 50% 108%, rgba(217,138,118,.50) 0%,' +
+  ' rgba(150,76,96,.26) 32%, rgba(58,42,92,.14) 60%, rgba(0,0,0,0) 82%)';
+
+/* ── boot ────────────────────────────────────────── */
+resize();
+requestAnimationFrame(draw);
+$('ritualLabel').textContent = GALLERY ? `[ seat ${SEAT} ]` : `[ ${RITUAL} ]`;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
