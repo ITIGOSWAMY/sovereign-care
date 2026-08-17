@@ -1,6 +1,6 @@
 /* The Council of Sovereign Care — offline shell.
    Bump CACHE when you change any file, or phones will keep serving the old one. */
-const CACHE = 'council-v1';
+const CACHE = 'council-v2';
 const FILES = [
   './',
   './index.html',
