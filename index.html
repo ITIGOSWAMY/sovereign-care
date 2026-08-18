@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>The Council of Sovereign Care</title>
-<meta name="description" content="Lay it down. What forms while you are gone forms only if you stay away.">
+<meta name="description" content="Put your phone down. See how long you last.">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#08080a" id="themeColor">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,589 +14,751 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <style>
-  :root{
-    --ink:#f2efe9;
-    --dim:#6f6a75;
-    --rose:#d98a76;
-    --safe-t: env(safe-area-inset-top, 0px);
-    --safe-b: env(safe-area-inset-bottom, 0px);
-    --mono: ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;margin:0;background:#000;color:var(--ink);
-    font-family:var(--mono);overscroll-behavior:none;
-    -webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
-  body{overflow:hidden}
+@font-face{font-family:'LM Dunhill';src:url('fonts/lmdunhill.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'LM Roman';src:url('fonts/lmroman.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'LM Roman';src:url('fonts/lmroman-italic.woff2') format('woff2');
+  font-weight:400;font-style:italic;font-display:swap}
 
-  #stage{position:fixed;inset:0;z-index:0}
-  canvas{display:block;width:100%;height:100%}
-  /* atmosphere arrives as weather, not decoration */
-  #weather{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;
-    transition:opacity 2.4s linear;mix-blend-mode:screen}
+:root{
+  --dun:'LM Dunhill','LM Roman',Georgia,serif;
+  --serif:'LM Roman',Georgia,serif;
+  --mono:ui-monospace,'SF Mono','Roboto Mono',Menlo,monospace;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+html[data-theme="night"]{ --paper:#08080a; --ink:#f6f4ee; --dim:rgba(246,244,238,.44); --hair:rgba(246,244,238,.16) }
+html[data-theme="day"]  { --paper:#ece7dd; --ink:#14120f; --dim:rgba(20,18,15,.50);  --hair:rgba(20,18,15,.20) }
 
-  .screen{position:fixed;inset:0;z-index:3;display:none;flex-direction:column;
-    align-items:center;justify-content:center;text-align:center;
-    padding:calc(30px + var(--safe-t)) 26px calc(30px + var(--safe-b))}
-  .screen.on{display:flex}
-  #intro,#calib,#result,#history{
-    background:radial-gradient(ellipse at center,
-      rgba(0,0,0,.90) 0%, rgba(0,0,0,.76) 50%, rgba(0,0,0,.46) 100%)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--paper);color:var(--ink);
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+  -webkit-font-smoothing:antialiased;font-family:var(--mono)}
+body{overflow:hidden;transition:background-color .5s ease,color .5s ease}
+#stage{position:fixed;inset:0;z-index:0}
+canvas#c{display:block;width:100%;height:100%}
 
-  /* ── instrument chrome ── */
-  .hud{position:fixed;left:0;right:0;z-index:4;display:none;
-    justify-content:space-between;align-items:baseline;
-    padding:calc(14px + var(--safe-t)) 18px 0;
-    font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--dim)}
-  .hud.on{display:flex}
-  .rec{display:inline-block;width:5px;height:5px;border-radius:50%;
-    background:var(--rose);margin-right:7px;vertical-align:middle;
-    animation:pulse 4.2s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.screen{position:fixed;inset:0;z-index:3;display:none;flex-direction:column;
+  align-items:center;padding:calc(22px + var(--safe-t)) 24px calc(24px + var(--safe-b))}
+.screen.on{display:flex}
+.sp{flex:1}
 
-  h1{font-size:12px;font-weight:400;letter-spacing:.34em;text-transform:uppercase;
-    margin:0 0 26px;line-height:2;color:var(--ink)}
-  .lede{font-size:13.5px;line-height:2.15;letter-spacing:.06em;color:var(--dim);
-    max-width:21rem;margin:0 0 40px}
-  .lede em{font-style:normal;color:var(--ink)}
-  .tag{font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;
-    color:var(--dim);margin:0 0 30px}
+/* running head */
+.head{font-family:var(--dun);font-size:30px;line-height:1.16;text-align:center;
+  letter-spacing:.01em;color:var(--ink);margin:6px 0 0}
+.rule{width:100%;height:1px;background:var(--hair);margin:14px 0 0}
 
-  button{font-family:var(--mono);font-size:11.5px;letter-spacing:.26em;
-    text-transform:uppercase;color:var(--ink);background:transparent;border:0;
-    padding:15px 4px;cursor:pointer;transition:opacity .3s;-webkit-appearance:none}
-  button:active{opacity:.45}
-  button.quiet{color:var(--dim)}
-  .stack{display:flex;flex-direction:column;gap:4px;align-items:center}
+.rows{width:100%}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;
+  border-bottom:1px solid var(--hair);font-family:var(--mono);
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.row b{font-weight:400;color:var(--ink);letter-spacing:.06em;font-variant-numeric:tabular-nums}
 
-  /* ── holding ── */
-  #hold{justify-content:flex-end;pointer-events:none;background:none}
-  #phase{font-size:10px;letter-spacing:.34em;text-transform:uppercase;
-    color:var(--dim);margin-bottom:6px;transition:opacity 1.6s}
-  #mode{font-size:9px;letter-spacing:.24em;color:var(--dim);opacity:.45}
+button{font-family:var(--serif);background:none;border:0;color:var(--ink);cursor:pointer;
+  -webkit-appearance:none;transition:opacity .25s}
+button:active{opacity:.45}
+.begin{font-size:21px;letter-spacing:.34em;padding:14px 6px}
+.quiet{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--dim);padding:8px 6px}
+.stack{display:flex;flex-direction:column;align-items:center;gap:0}
 
-  /* ── lifted ── */
-  #wobble{background:rgba(0,0,0,.80);backdrop-filter:blur(2px);z-index:5}
-  #wobble .lede{color:var(--ink)}
-  #bar{width:min(210px,56vw);height:1px;background:rgba(217,138,118,.2);margin-top:8px}
-  #fill{height:100%;width:100%;background:var(--rose)}
+#toggleWrap{padding:10px 0 0}
+#toggle{width:92px;height:38px;display:block}
 
-  /* ── result ── */
-  .dur{font-size:clamp(38px,12vw,58px);font-weight:300;letter-spacing:.04em;
-    font-variant-numeric:tabular-nums;margin:0 0 14px;line-height:1}
-  .verdict{font-size:9.5px;letter-spacing:.32em;text-transform:uppercase;
-    color:var(--dim);margin-bottom:44px}
-  .rows{width:min(300px,84vw);margin:0 0 40px}
-  .row{display:flex;justify-content:space-between;align-items:baseline;
-    padding:11px 0;border-bottom:1px solid rgba(111,106,117,.16);
-    font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
-  .row b{font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.08em}
-  .closing{font-size:13px;line-height:2.1;letter-spacing:.05em;color:var(--ink);
-    max-width:20rem;margin:0 0 40px;opacity:.86}
+.note{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--dim);
+  text-align:center;line-height:1.9}
+.warn{color:#c0563e}
+html[data-theme="night"] .warn{color:#e08a72}
 
-  .note{position:fixed;left:0;right:0;bottom:calc(12px + var(--safe-b));z-index:6;
-    font-size:9px;letter-spacing:.16em;color:var(--rose);text-align:center;
-    padding:0 24px;line-height:1.8;opacity:.8;pointer-events:none;text-transform:uppercase}
+/* session */
+#hold{justify-content:flex-end;pointer-events:none}
+.hud{position:fixed;left:0;right:0;top:0;z-index:4;display:none;justify-content:space-between;
+  padding:calc(16px + var(--safe-t)) 24px 0;font-family:var(--mono);font-size:10px;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.hud.on{display:flex}
+.rec{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--ink);
+  margin-right:6px;vertical-align:middle;opacity:.7;animation:pulse 4.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:.85}}
+#phase{font-family:var(--dun);font-size:26px;letter-spacing:.02em;color:var(--ink)}
+#mode{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--dim);margin-top:8px}
+#seats{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;color:var(--dim);
+  opacity:.7;margin-top:12px}
+
+#lifted{justify-content:center;background:color-mix(in srgb,var(--paper) 84%,transparent);
+  backdrop-filter:blur(3px);z-index:5}
+#bar{width:min(210px,56vw);height:1px;background:var(--hair);margin-top:26px}
+#fill{height:100%;width:100%;background:var(--ink);opacity:.8}
+
+.dur{font-family:var(--dun);font-size:clamp(56px,19vw,86px);line-height:1;margin:0;
+  font-variant-numeric:tabular-nums}
+.verdict{font-family:var(--mono);font-size:10px;letter-spacing:.34em;text-transform:uppercase;
+  color:var(--dim);margin-top:12px}
+.closing{font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.75;
+  text-align:center;color:var(--ink);opacity:.88;max-width:20rem}
+.small{font-family:var(--dun);font-size:24px;text-align:center;margin:0}
+#card{width:min(300px,80vw);aspect-ratio:4/5;object-fit:contain;border:1px solid var(--hair)}
+#plateGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
+#plateGrid canvas{width:100%;aspect-ratio:1;display:block}
+.center{text-align:center;width:100%}
+.zone{width:100%;pointer-events:none}
 </style>
 </head>
 <body>
 
 <div id="stage"><canvas id="c"></canvas></div>
-<div id="weather"></div>
 
 <div class="hud" id="hud">
   <span id="hudLeft">council</span>
   <span><i class="rec"></i><span id="hudClock">00:00</span></span>
 </div>
 
-<!-- ── INTRO ─────────────────────────────────── -->
+<!-- 01 OPEN -->
 <section id="intro" class="screen on">
-  <p class="tag" id="ritualLabel">[ solo ]</p>
-  <h1>The Council of<br>Sovereign Care</h1>
-  <p class="lede">Lay this down and walk away.<br>
-     <em>What forms while you are gone<br>forms only if you stay gone.</em></p>
-  <div class="stack">
-    <button id="begin">[ begin ]</button>
-    <button class="quiet" id="toHistory">[ record ]</button>
+  <div class="head">The Council of<br>Sovereign Care</div>
+  <div class="rule"></div>
+  <div class="sp"></div>
+  <div class="zone" style="height:36vh"></div>
+  <div class="sp"></div>
+  <div class="rows" id="introRows"></div>
+  <div class="stack" style="margin-top:22px">
+    <button class="begin" id="begin">B E G I N</button>
+    <button class="quiet" id="toHistory">record</button>
   </div>
-  <div class="note" id="warn"></div>
+  <div id="toggleWrap"><canvas id="toggle" width="368" height="152"></canvas></div>
+  <div class="sp"></div>
+  <div class="note" id="baseline">put it down and see how long you last</div>
 </section>
 
-<!-- ── CALIBRATING ───────────────────────────── -->
+<!-- 02 CALIBRATING -->
 <section id="calib" class="screen">
-  <p class="tag">[ listening to the room ]</p>
-  <p class="lede">Lay me flat.<br>Learning how still this place is.</p>
-  <p class="tag" id="calibdots">·</p>
+  <div class="head">The Council of<br>Sovereign Care</div>
+  <div class="rule"></div>
+  <div class="sp"></div>
+  <div class="zone" style="height:34vh"></div>
+  <div class="sp"></div>
+  <div class="small">getting a baseline</div>
+  <div class="note" style="margin-top:16px">Keep it flat.<br>Learning how still this room is.</div>
+  <div class="sp"></div>
+  <div class="note" id="calibDots">·</div>
 </section>
 
-<!-- ── HOLDING ───────────────────────────────── -->
+<!-- 03 HOLDING -->
 <section id="hold" class="screen">
-  <div id="phase">[ settling ]</div>
-  <div id="mode"></div>
+  <div class="center"><div id="phase">settling</div><div id="mode"></div><div id="seats"></div></div>
 </section>
 
-<!-- ── LIFTED ────────────────────────────────── -->
-<section id="wobble" class="screen">
-  <p class="tag">[ lifted ]</p>
-  <p class="lede">Lay it flat and the figure returns.<br>
-     Touch the glass to end here on purpose.</p>
+<!-- 04 LIFTED -->
+<section id="lifted" class="screen">
+  <div class="small">you picked it up</div>
+  <div class="note" style="margin-top:16px;font-size:11px">
+    Put it back down to keep going.<br>Touch the screen to stop here.</div>
   <div id="bar"><div id="fill"></div></div>
 </section>
 
-<!-- ── RESULT ────────────────────────────────── -->
+<!-- 05 RESULT -->
 <section id="result" class="screen">
-  <div class="dur" id="rDur">00:00</div>
-  <div class="verdict" id="rVerdict">[ released ]</div>
-  <div class="rows">
-    <div class="row"><span>today</span><b id="sToday">—</b></div>
-    <div class="row"><span>days in a row</span><b id="sStreak">—</b></div>
-    <div class="row"><span>longest</span><b id="sBest">—</b></div>
-    <div class="row"><span>harmonic reached</span><b id="sMode">—</b></div>
-  </div>
-  <p class="closing" id="rClosing"></p>
+  <div class="head">The Council of<br>Sovereign Care</div>
+  <div class="rule"></div>
+  <div class="sp"></div>
+  <div class="center"><div class="dur" id="rDur">00:00</div>
+    <div class="verdict" id="rVerdict">finished</div></div>
+  <div class="rows" id="rRows" style="margin-top:30px"></div>
+  <p class="closing" id="rClosing" style="margin-top:26px"></p>
+  <div class="sp"></div>
   <div class="stack">
-    <button id="share">[ keep the figure ]</button>
-    <button class="quiet" id="again">[ again ]</button>
+    <button class="begin" style="font-size:16px" id="toFigure">keep the plate</button>
+    <button class="quiet" id="again">again</button>
   </div>
 </section>
 
-<!-- ── RECORD ────────────────────────────────── -->
+<!-- 06 FIGURE -->
+<section id="figure" class="screen">
+  <div class="sp"></div>
+  <img id="card" alt="your plate">
+  <div class="stack" style="margin-top:24px">
+    <button class="begin" style="font-size:16px" id="save">save image</button>
+    <button class="quiet" id="backFromFigure">back</button>
+  </div>
+  <div class="sp"></div>
+  <div class="note" id="saveHint"></div>
+</section>
+
+<!-- 07 RECORD -->
 <section id="history" class="screen">
-  <p class="tag">[ record ]</p>
-  <p class="lede" id="hSummary"></p>
-  <div class="rows" id="hRows"></div>
-  <p class="closing" id="hTail"></p>
+  <div class="head">The Council of<br>Sovereign Care</div>
+  <div class="rule"></div>
+  <div class="small" style="margin-top:20px">Record</div>
+  <div class="rows" id="hRows" style="margin-top:18px"></div>
+  <div id="plateGrid" style="margin-top:20px"></div>
+  <div class="note" style="margin-top:10px">the six most recent plates</div>
+  <div class="sp"></div>
   <div class="stack">
-    <button class="quiet" id="hExport">[ export ]</button>
-    <button class="quiet" id="hBack">[ back ]</button>
+    <button class="quiet" id="hExport">export</button>
+    <button class="quiet" id="hBack">back</button>
   </div>
 </section>
 
 <script>
 'use strict';
-/* ══════════════════════════════════════════════════════════════
-   THE COUNCIL OF SOVEREIGN CARE
-   Saanchie Goswamy
+/* ══════════════════════════════════════════════════════════════════════
+   THE COUNCIL OF SOVEREIGN CARE — Saanchie Goswamy
 
-   The figure is a Chladni plate. Sand migrates away from every
-   vibrating region and gathers only at the nodes — the places
-   that are not moving. The pattern is a map of what held still.
+   u(r,θ) = J_m(α_mn·r)·cos(mθ) — a circular Chladni plate.
+   Sand migrates off every vibrating region and gathers at the nodes, so
+   the figure is a map of what held still.
+
+     n  nodal rings      grows with how long you are away
+     m  nodal diameters  grows with how still you have been
+
+   Grains are blurred and pushed through a noise-perturbed threshold so
+   they clump and bleed like powder rather than sitting as clean dots.
 
    No backend. No account. No network. Nothing leaves this device.
-   ══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════════ */
 
-const P       = new URLSearchParams(location.search);
-const RITUAL  = (P.get('ritual') || 'solo').toLowerCase().slice(0, 24);
-const SEAT    = P.get('seat');
-const GALLERY = SEAT !== null;
+const P=new URLSearchParams(location.search);
+const RITUAL=(P.get('ritual')||'solo').toLowerCase().slice(0,24);
+const SEAT=P.get('seat'), GALLERY=SEAT!==null;
 
-const TILT_LIMIT = 20;      // degrees off horizontal
-const TILT_HOLD  = 300;     // ms sustained before it counts as lifted
-const GRACE_MS   = 12000;   // window to lay it back down
-const CAL_MS     = 3000;
-const SPIKE      = 1.35;
-const KEY        = 'council-sovereign-care/v1';
+const TILT_LIMIT=20, TILT_HOLD=300, GRACE_MS=12000;
+const CAL_MS=3000, SPIKE=1.35, SWEEP_MS=4500;
+const INK_MS=260;                       // how often the ink is re-thresholded
+const KEY='council-sovereign-care/v1', THEME_KEY='council-theme';
 
-let state = 'intro', startAt = 0, liftedAt = 0, wobbleAt = 0;
-let floorRMS = 0.05, tiltDeg = 0, rms = 0, strain = 0;
-let tiltSince = null, wakeLock = null, calSamples = [], sensorsLive = false;
+let state='intro', startAt=0, liftedAt=0, wobbleAt=0, sweepAt=0;
+let floorRMS=0.05, tiltDeg=0, rms=0, strain=0, calm=0.5;
+let tiltSince=null, wakeLock=null, calSamples=[], sensorsLive=false;
+let people=1, pending=null, cardBlob=null;
+let booted=false;
+let inkA=null, inkB=null, inkAt=0;   // two ink stamps, crossfaded
 
-const $ = id => document.getElementById(id);
-const now = () => performance.now();
+const $=id=>document.getElementById(id), now=()=>performance.now();
 
-/* ── storage ─────────────────────────────────────── */
-const blank = () => ({ sessions: [] });
-function load(){
-  try {
-    const d = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY)) || {});
-    delete d.opens;                       // retired: no longer counted or kept
-    return d;
-  } catch(e){ return blank(); }
+/* ── theme ─────────────────────────────────────────── */
+let night=true;
+function applyTheme(n){
+  night=n;
+  document.documentElement.setAttribute('data-theme', n?'night':'day');
+  $('themeColor').setAttribute('content', n?'#08080a':'#ece7dd');
+  try{localStorage.setItem(THEME_KEY, n?'night':'day')}catch(e){}
+  inkA=inkB=null;                       // stamps carry the old ink colour
+  if(booted) drawToggle();              // INK_RGB and the stamp fns aren't live yet at boot
 }
-function save(d){ try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){} }
-const today = () => new Date().toLocaleDateString('en-CA');
-let DB = load();
-save(DB);                                 // drops any previously stored open counts
+(function initTheme(){
+  let saved=null; try{saved=localStorage.getItem(THEME_KEY)}catch(e){}
+  if(saved) applyTheme(saved==='night');
+  else applyTheme(!window.matchMedia||!matchMedia('(prefers-color-scheme: light)').matches);
+})();
+const INK_RGB=()=> night?[246,244,238]:[18,17,15];
 
-/* ── time ────────────────────────────────────────── */
-function fmt(ms){
-  const s = Math.max(0, Math.floor(ms/1000));
-  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
-  const p = n => String(n).padStart(2,'0');
-  return h ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+/* ── storage ───────────────────────────────────────── */
+const blank=()=>({sessions:[]});
+function load(){try{const d=Object.assign(blank(),JSON.parse(localStorage.getItem(KEY))||{});
+  delete d.opens;return d}catch(e){return blank()}}
+function save(d){try{localStorage.setItem(KEY,JSON.stringify(d))}catch(e){}}
+const today=()=>new Date().toLocaleDateString('en-CA');
+let DB=load(); save(DB);
+
+function fmt(ms){const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),
+  m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');
+  return h?`${p(h)}:${p(m)}:${p(x)}`:`${p(m)}:${p(x)}`}
+function shortT(ms){const s=Math.floor(ms/1000);
+  if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'m';
+  return (s/3600).toFixed(1).replace(/\.0$/,'')+'h'}
+const todayTotal=()=>DB.sessions.filter(s=>s.date===today()).reduce((a,s)=>a+s.ms,0);
+const best=()=>DB.sessions.reduce((a,s)=>Math.max(a,s.ms),0);
+const lastMs=()=>DB.sessions.length?DB.sessions[DB.sessions.length-1].ms:0;
+function streak(){const d=new Set(DB.sessions.map(s=>s.date));let n=0;const t=new Date();
+  if(!d.has(t.toLocaleDateString('en-CA')))t.setDate(t.getDate()-1);
+  while(d.has(t.toLocaleDateString('en-CA'))){n++;t.setDate(t.getDate()-1)}return n}
+
+const SCREENS=['intro','calib','hold','lifted','result','figure','history'];
+const show=id=>SCREENS.forEach(s=>$(s).classList.toggle('on',s===id));
+const rowsHTML=r=>r.map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
+
+/* ── sound ─────────────────────────────────────────── */
+let AC=null,drone=null;
+function audioStart(){
+  try{
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+    const t=AC.currentTime;
+    [1,1.52,2.13,2.78,3.41,4.62].forEach((r,i)=>{
+      const o=AC.createOscillator(),g=AC.createGain();
+      o.type='sine';o.frequency.value=92*r;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.30/(i+1.35),t+0.012+i*0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+9.5-i*0.7);
+      o.connect(g).connect(AC.destination);o.start(t);o.stop(t+10);
+    });
+    const o=AC.createOscillator(),g=AC.createGain(),f=AC.createBiquadFilter();
+    o.type='triangle';o.frequency.value=46;f.type='lowpass';f.frequency.value=240;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.055,t+6);
+    g.gain.setTargetAtTime(0.0001,t+40,95);
+    o.connect(f).connect(g).connect(AC.destination);o.start(t);drone={o,g};
+  }catch(e){}
 }
-function fmtShort(ms){
-  const s = Math.floor(ms/1000);
-  if (s < 60)   return s + 's';
-  if (s < 3600) return Math.floor(s/60) + 'm';
-  return (s/3600).toFixed(1).replace(/\.0$/,'') + 'h';
-}
+function audioStop(){ if(!AC)return;
+  try{const t=AC.currentTime;
+    if(drone){drone.g.gain.cancelScheduledValues(t);
+      drone.g.gain.setTargetAtTime(0.0001,t,0.6);drone.o.stop(t+3);drone=null}
+    setTimeout(()=>{try{AC.close()}catch(e){}AC=null},3600)}catch(e){}}
 
-const todayTotal = () => DB.sessions.filter(s => s.date === today()).reduce((a,s)=>a+s.ms,0);
-const best       = () => DB.sessions.reduce((a,s)=>Math.max(a,s.ms), 0);
-function streak(){
-  const days = new Set(DB.sessions.map(s => s.date));
-  let n = 0; const d = new Date();
-  if (!days.has(d.toLocaleDateString('en-CA'))) d.setDate(d.getDate()-1);
-  while (days.has(d.toLocaleDateString('en-CA'))){ n++; d.setDate(d.getDate()-1); }
-  return n;
-}
-
-const SCREENS = ['intro','calib','hold','wobble','result','history'];
-const show = id => SCREENS.forEach(s => $(s).classList.toggle('on', s === id));
-
-/* ── keeping the page alive ──────────────────────── */
-async function acquireWake(){
-  if (!('wakeLock' in navigator)) return false;
-  try { wakeLock = await navigator.wakeLock.request('screen'); return true; } catch(e){ return false; }
-}
-function releaseWake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible'){
-    if (state === 'holding' || state === 'wobble') acquireWake();
-  } else if (state === 'holding' || state === 'wobble'){
-    finish('reclaimed');                  // they went somewhere else
-  }
+/* ── wake lock ─────────────────────────────────────── */
+async function acquireWake(){if(!('wakeLock' in navigator))return false;
+  try{wakeLock=await navigator.wakeLock.request('screen');return true}catch(e){return false}}
+function releaseWake(){try{wakeLock&&wakeLock.release()}catch(e){}wakeLock=null}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){if(state==='holding'||state==='lifted')acquireWake()}
+  else if(state==='holding'||state==='lifted')finish('picked up');
 });
-if (!('wakeLock' in navigator))
-  $('warn').textContent = 'set auto-lock to never before you begin';
+if(!('wakeLock' in navigator))
+  $('baseline').innerHTML='<span class="warn">set auto-lock to never before you begin</span>';
 
-/* ── sensing ─────────────────────────────────────── */
-const buf = [];
+/* ── sensing ───────────────────────────────────────── */
+const buf=[];
 function onMotion(e){
-  const a = e.accelerationIncludingGravity;
-  if (!a || a.x == null) return;
-  sensorsLive = true;
-  const mag = Math.hypot(a.x, a.y, a.z) || 1;
-  tiltDeg = Math.acos(Math.min(1, Math.abs(a.z)/mag)) * 180/Math.PI;
-  const r = e.rotationRate || {};
-  const m = Math.abs(mag - 9.81) + 0.05*Math.hypot(r.alpha||0, r.beta||0, r.gamma||0);
-  const t = now();
-  buf.push({t, m});
-  while (buf.length && buf[0].t < t - 2000) buf.shift();
-  const mean = buf.reduce((s,x)=>s+x.m,0)/buf.length;
-  rms = Math.sqrt(buf.reduce((s,x)=>s+(x.m-mean)**2,0)/buf.length);
+  const a=e.accelerationIncludingGravity;if(!a||a.x==null)return;
+  sensorsLive=true;
+  const mag=Math.hypot(a.x,a.y,a.z)||1;
+  tiltDeg=Math.acos(Math.min(1,Math.abs(a.z)/mag))*180/Math.PI;
+  const r=e.rotationRate||{};
+  const m=Math.abs(mag-9.81)+0.05*Math.hypot(r.alpha||0,r.beta||0,r.gamma||0);
+  const t=now();buf.push({t,m});
+  while(buf.length&&buf[0].t<t-2000)buf.shift();
+  const mean=buf.reduce((s,x)=>s+x.m,0)/buf.length;
+  rms=Math.sqrt(buf.reduce((s,x)=>s+(x.m-mean)**2,0)/buf.length);
 }
 async function requestSensors(){
-  const D = window.DeviceMotionEvent;
-  if (D && typeof D.requestPermission === 'function'){
-    try { if (await D.requestPermission() !== 'granted') return false; }
-    catch(e){ return false; }
-  }
-  window.addEventListener('devicemotion', onMotion, { passive:true });
+  const D=window.DeviceMotionEvent;
+  if(D&&typeof D.requestPermission==='function'){
+    try{if(await D.requestPermission()!=='granted')return false}catch(e){return false}}
+  window.addEventListener('devicemotion',onMotion,{passive:true});
   return true;
 }
 
-/* ── session ─────────────────────────────────────── */
-$('begin').addEventListener('click', async () => {
-  const ok = await requestSensors();     // must be first await off the gesture
-  acquireWake();
-  calSamples = []; state = 'calib'; show('calib');
-  const t0 = now();
-  const tick = setInterval(() => {
-    if (sensorsLive) calSamples.push(rms);
-    $('calibdots').textContent = ['·','· ·','· · ·'][Math.floor((now()-t0)/700)%3];
-    if (now() - t0 >= CAL_MS){
+/* ── modes ─────────────────────────────────────────── */
+const OPEN_OFFSET=Math.floor(Math.random()*3);
+const nFor=ms=>Math.min(4,1+Math.floor(Math.log2(ms/60000+1)*1.15));
+const mFor=c=>Math.min(6,Math.max(0,Math.round(c*6)));
+const PHASES=['settling','first ring','holding','going deep','fine structure','still'];
+const phaseFor=(ms,m)=>PHASES[Math.min(PHASES.length-1,
+  Math.floor(Math.log2(ms/60000+1)*1.5)+(m>=5?1:0))];
+
+/* ── session ───────────────────────────────────────── */
+$('begin').addEventListener('click',async e=>{
+  e.stopPropagation();
+  const ok=await requestSensors();
+  acquireWake();audioStart();
+  calSamples=[];state='calib';show('calib');
+  const t0=now();
+  const tick=setInterval(()=>{
+    if(sensorsLive)calSamples.push(rms);
+    $('calibDots').textContent=['·','· ·','· · ·'][Math.floor((now()-t0)/700)%3];
+    if(now()-t0>=CAL_MS){
       clearInterval(tick);
-      floorRMS = calSamples.length
-        ? Math.max(0.02, calSamples.sort((a,b)=>a-b)[Math.floor(calSamples.length*0.9)])
-        : 0.05;
-      if (!ok) floorRMS = Infinity;      // no sensors: touch + visibility only
+      floorRMS=calSamples.length
+        ?Math.max(0.02,calSamples.sort((a,b)=>a-b)[Math.floor(calSamples.length*0.9)]):0.05;
+      if(!ok)floorRMS=Infinity;
       startHold();
     }
-  }, 100);
+  },100);
 });
-
 function startHold(){
-  state = 'holding'; startAt = Date.now(); liftedAt = 0;
-  strain = 0; tiltSince = null;
-  scatter(1);                            // throw the sand before it settles
+  state='holding';startAt=Date.now();liftedAt=0;strain=0;calm=0.5;tiltSince=null;
+  scatter(1);inkA=inkB=null;
   $('hud').classList.add('on');
-  $('hudLeft').textContent = GALLERY ? 'seat ' + SEAT : RITUAL;
+  $('hudLeft').textContent=GALLERY?'seat '+SEAT:RITUAL;
   show('hold');
 }
+function onReach(){ if(state==='lifted')finish('finished');
+  else if(state==='holding')finish('picked up') }
+window.addEventListener('touchstart',onReach,{passive:true});
+window.addEventListener('mousedown',onReach);
 
-/* Flat and touched is a reach. Lifted and then touched is a decision. */
-function onReach(){
-  if (state === 'wobble')       finish('tapout');
-  else if (state === 'holding') finish('reclaimed');
-}
-window.addEventListener('touchstart', onReach, { passive:true });
-window.addEventListener('mousedown',  onReach);
+function enterLifted(){ if(state!=='holding')return;
+  state='lifted';wobbleAt=now();liftedAt=Date.now();show('lifted') }
 
 function finish(reason){
-  if (state !== 'holding' && state !== 'wobble') return;
-  const endAt = liftedAt || Date.now();  // credit up to the moment of the reach
-  state = 'result'; releaseWake();
+  if(state!=='holding'&&state!=='lifted')return;
+  const endAt=liftedAt||Date.now(), ms=Math.max(0,endAt-startAt);
+  pending={start:startAt,ms,reason,ritual:RITUAL,
+    date:new Date(startAt).toLocaleDateString('en-CA'),
+    m:mFor(calm),n:nFor(ms),seat:SEAT||undefined};
+  DB.sessions.push(pending);save(DB);
+  releaseWake();audioStop();
   $('hud').classList.remove('on');
-  $('weather').style.opacity = 0;
-  const ms = Math.max(0, endAt - startAt);
-  DB.sessions.push({
-    start: startAt, ms, reason, ritual: RITUAL,
-    date: new Date(startAt).toLocaleDateString('en-CA'),
-    mode: modeIndex(ms), seat: SEAT || undefined
-  });
-  save(DB);
-  renderResult(ms, reason);
-  show('result');
+  state='sweeping';sweepAt=now();
+  show('hold');$('phase').textContent='sweeping the plate';
+  $('mode').textContent='';$('seats').textContent='';
 }
-
-function enterWobble(){
-  if (state !== 'holding') return;
-  state = 'wobble'; wobbleAt = now(); liftedAt = Date.now();
-  scatter(0.9);
-  show('wobble');
-}
-
-/* ── harmonics: the figure deepens with time ─────── */
-const MODES = [[1,2],[2,3],[3,4],[3,5],[4,5],[5,6],[5,7],[6,7]];
-const modeIndex = ms => Math.min(MODES.length-1, Math.floor(Math.log2(ms/60000 + 1) * 1.55));
-const PHASES = ['settling','first node','the figure holds','it is finding itself',
-                'deepening','fine structure','high harmonic','sovereign'];
+function afterSweep(){ state='result';renderResult(pending.ms,pending.reason);show('result') }
 
 function logic(){
-  if (state === 'holding' || state === 'wobble'){
-    const raw = floorRMS === Infinity ? 0
-      : Math.max(0, Math.min(1, (rms - floorRMS) / (floorRMS + SPIKE)));
-    strain += (raw > strain ? 0.25 : 0.02) * (raw - strain);
+  if(state==='holding'||state==='lifted'){
+    const raw=floorRMS===Infinity?0:Math.max(0,Math.min(1,(rms-floorRMS)/(floorRMS+SPIKE)));
+    strain+=(raw>strain?0.25:0.02)*(raw-strain);
+    calm+=((1-strain)-calm)*0.0016;
   }
-
-  if (state === 'holding'){
-    const t = now();
-    if (tiltDeg > TILT_LIMIT){
-      if (!tiltSince) tiltSince = t;
-      else if (t - tiltSince > TILT_HOLD) enterWobble();
-    } else tiltSince = null;
-    if (floorRMS !== Infinity && rms > floorRMS + SPIKE) enterWobble();
-
-    const el = Date.now() - startAt, i = modeIndex(el);
-    $('hudClock').textContent = fmt(el);
-    $('phase').textContent = '[ ' + PHASES[i] + ' ]';
-    $('mode').textContent  = MODES[i][0] + ' · ' + MODES[i][1];
-    // weather arrives slowly, and only at depth
-    $('weather').style.opacity = Math.min(0.5, Math.max(0, (el/60000 - 8) / 45));
+  if(state==='holding'){
+    const t=now();
+    if(tiltDeg>TILT_LIMIT){if(!tiltSince)tiltSince=t;else if(t-tiltSince>TILT_HOLD)enterLifted()}
+    else tiltSince=null;
+    if(floorRMS!==Infinity&&rms>floorRMS+SPIKE)enterLifted();
+    const el=Date.now()-startAt,m=mFor(calm),n=nFor(el);
+    $('hudClock').textContent=fmt(el);
+    $('phase').textContent=phaseFor(el,m);
+    $('mode').textContent=m+' · '+n;
+    $('seats').textContent=people===1?'holding alone · 5 empty'
+      :people+' holding · '+(6-people)+' empty';
   }
-
-  if (state === 'wobble'){
-    const left = GRACE_MS - (now() - wobbleAt);
-    $('fill').style.width = Math.max(0, left/GRACE_MS*100) + '%';
-    if (tiltDeg <= TILT_LIMIT && rms < floorRMS + SPIKE){
-      state = 'holding'; liftedAt = 0; tiltSince = null; show('hold');
-    } else if (left <= 0) finish('reclaimed');
+  if(state==='lifted'){
+    const left=GRACE_MS-(now()-wobbleAt);
+    $('fill').style.width=Math.max(0,left/GRACE_MS*100)+'%';
+    if(tiltDeg<=TILT_LIMIT&&rms<floorRMS+SPIKE){
+      state='holding';liftedAt=0;tiltSince=null;show('hold')}
+    else if(left<=0)finish('picked up');
   }
+  if(state==='sweeping'&&now()-sweepAt>SWEEP_MS)afterSweep();
 }
 
-/* ── result ──────────────────────────────────────── */
-const CLOSINGS = [
-  [   60000, 'A beginning is still a beginning.'],
-  [  300000, 'The sand had only started to move.'],
-  [  900000, 'Long enough for something to form.'],
-  [ 1800000, 'The figure found its first fine lines.'],
-  [ 3600000, 'The room stayed still around you.'],
-  [Infinity, 'You were gone a long time. It held.']
-];
-function renderResult(ms, reason){
-  $('rDur').textContent = fmt(ms);
-  $('rVerdict').textContent = reason === 'tapout' ? '[ released ]' : '[ reclaimed ]';
-  $('sToday').textContent  = fmtShort(todayTotal());
-  $('sStreak').textContent = streak();
-  $('sBest').textContent   = fmtShort(best());
-  const i = modeIndex(ms);
-  $('sMode').textContent   = MODES[i][0] + ' · ' + MODES[i][1];
-  $('rClosing').textContent = (CLOSINGS.find(c => ms < c[0]) || CLOSINGS[5])[1];
+/* ── result / record ───────────────────────────────── */
+const CLOSINGS=[
+  [60000,'A start is still a start.'],
+  [300000,'The sand had only begun to move.'],
+  [900000,'Long enough for something to form.'],
+  [1800000,'That is a real stretch of not being reachable.'],
+  [3600000,'The room stayed still around you.'],
+  [Infinity,'You were gone a long time. It held.']];
+function renderResult(ms,reason){
+  $('rDur').textContent=fmt(ms);
+  $('rVerdict').textContent=reason;
+  $('rRows').innerHTML=rowsHTML([['today',shortT(todayTotal())],
+    ['days in a row',streak()],['longest',shortT(best())],
+    ['plate',pending.m+' · '+pending.n]]);
+  $('rClosing').textContent=(CLOSINGS.find(c=>ms<c[0])||CLOSINGS[5])[1];
 }
-
-/* ── record ──────────────────────────────────────── */
+function renderIntro(){
+  const n=DB.sessions.length;
+  $('introRows').innerHTML=rowsHTML([
+    ['ritual',GALLERY?('seat '+SEAT):RITUAL],
+    ['last time',n?shortT(lastMs()):'—'],
+    ['longest',n?shortT(best()):'—'],
+    ['days in a row',n?streak():'—']]);
+  if(!n) $('baseline').innerHTML=
+    'Lay your phone down and walk away.<br>A figure forms in the sand while you are gone.';
+}
 function renderHistory(){
-  const n = DB.sessions.length;
-  $('hSummary').innerHTML = n
-    ? `${n} session${n===1?'':'s'} kept here.<br><em>Nothing has left this device.</em>`
-    : 'Nothing yet.<br><em>And nothing has left this device.</em>';
-  const total = DB.sessions.reduce((a,s)=>a+s.ms,0);
-  $('hRows').innerHTML = [
-    ['total away',  fmtShort(total)],
-    ['longest',     fmtShort(best())],
-    ['days in a row', streak()],
-    ['rituals',     [...new Set(DB.sessions.map(s=>s.ritual))].length]
-  ].map(([k,v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
-  $('hTail').textContent = '';
+  $('hRows').innerHTML=rowsHTML([['total away',shortT(DB.sessions.reduce((a,s)=>a+s.ms,0))],
+    ['longest',shortT(best())],['days in a row',streak()],
+    ['sessions',DB.sessions.length],
+    ['rituals',[...new Set(DB.sessions.map(s=>s.ritual))].length]]);
+  const g=$('plateGrid');g.innerHTML='';
+  const recent=DB.sessions.slice(-6).reverse();
+  const fill=recent.length?recent:[{m:2,n:2},{m:3,n:2},{m:4,n:3},{m:5,n:3},{m:6,n:3},{m:6,n:4}];
+  const dim=!recent.length;
+  fill.forEach(s=>{
+    const c=document.createElement('canvas');c.width=c.height=180;g.appendChild(c);
+    const x=c.getContext('2d');
+    // grain count has to scale with radius or nothing crosses the ink threshold
+    const st=inkStamp(s.m||2,s.n||2,72,{count:8000,iters:280,blur:2.6,threshold:0.30,
+      soft:0.14,ragged:0.38,ink:INK_RGB(),halo:false,core:false,size:1.1});
+    x.globalAlpha=dim?0.28:1;x.drawImage(st,90-st.width/2,90-st.height/2);
+  });
+  state='history';
   show('history');
 }
-$('toHistory').addEventListener('click', e => { e.stopPropagation(); renderHistory(); });
-$('hBack').addEventListener('click', e => { e.stopPropagation(); state='intro'; show('intro'); });
-$('again').addEventListener('click', e => { e.stopPropagation(); state='intro'; scatter(1); show('intro'); });
-$('hExport').addEventListener('click', e => {
-  e.stopPropagation();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB,null,2)], {type:'application/json'}));
-  a.download = 'sovereign-care-record.json'; a.click();
-});
+$('toHistory').addEventListener('click',e=>{e.stopPropagation();renderHistory()});
+$('hBack').addEventListener('click',e=>{e.stopPropagation();state='intro';renderIntro();show('intro')});
+$('again').addEventListener('click',e=>{e.stopPropagation();state='intro';scatter(1);
+  inkA=inkB=null;renderIntro();show('intro')});
+$('backFromFigure').addEventListener('click',e=>{e.stopPropagation();state='result';show('result')});
+$('hExport').addEventListener('click',e=>{e.stopPropagation();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}));
+  a.download='sovereign-care-record.json';a.click()});
 
-/* ── keep the figure ─────────────────────────────── */
-$('share').addEventListener('click', async e => {
-  e.stopPropagation();
-  const last = DB.sessions[DB.sessions.length-1] || { ms:0, mode:0 };
-  const S = 1080, cv = document.createElement('canvas');
-  cv.width = S; cv.height = 1350;
-  const x = cv.getContext('2d');
-  x.fillStyle = '#000'; x.fillRect(0,0,S,1350);
+/* ══ CHLADNI ═══════════════════════════════════════ */
+const FACT=[1];for(let i=1;i<64;i++)FACT[i]=FACT[i-1]*i;
+function besselJ(m,x){
+  if(x<0)x=-x;
+  if(x<12){let s=0;for(let k=0;k<34;k++)s+=(k%2?-1:1)/(FACT[k]*FACT[k+m])*Math.pow(x/2,2*k+m);return s}
+  return Math.sqrt(2/(Math.PI*x))*Math.cos(x-m*Math.PI/2-Math.PI/4);
+}
+const ZEROS={0:[2.4048,5.5201,8.6537,11.7915,14.9309],1:[3.8317,7.0156,10.1735,13.3237,16.4706],
+ 2:[5.1356,8.4172,11.6198,14.7960,17.9598],3:[6.3802,9.7610,13.0152,16.2235,19.4094],
+ 4:[7.5883,11.0647,14.3725,17.6160,20.8269],5:[8.7715,12.3386,15.7002,18.9801,22.2178],
+ 6:[9.9361,13.5893,17.0038,20.3208,23.5861]};
+const LUTN=1024,LUTS={};
+function lut(m,n){const k=m+':'+n;if(LUTS[k])return LUTS[k];
+  const a=ZEROS[m][n-1],t=new Float32Array(LUTN+1);
+  for(let i=0;i<=LUTN;i++)t[i]=besselJ(m,a*i/LUTN);return LUTS[k]=t}
+const FN=192,FIELDS={};
+function field(m,n){const k=m+':'+n;if(FIELDS[k])return FIELDS[k];
+  const T=lut(m,n),f=new Float32Array(FN*FN);
+  for(let j=0;j<FN;j++){const dy=(j+0.5)/FN*2-1;
+    for(let i=0;i<FN;i++){const dx=(i+0.5)/FN*2-1;const r=Math.sqrt(dx*dx+dy*dy);
+      f[j*FN+i]=r>1?0:Math.abs(T[(r*LUTN)|0]*Math.cos(m*Math.atan2(dy,dx)))}}
+  return FIELDS[k]=f}
+function seed(p){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random());
+  p.x=0.5+Math.cos(a)*r*0.5;p.y=0.5+Math.sin(a)*r*0.5;return p}
 
-  // settle a plate offline, then print it
-  const [n,m] = MODES[last.mode || 0];
-  const pts = Array.from({length:26000}, () => seed({}));
-  for (let it=0; it<220; it++)
-    for (const p of pts){
-      const step = Math.max(0.0008, Math.abs(chladni(p.x,p.y,n,m)) * 0.050);
-      p.x += (Math.random()-0.5)*step;
-      p.y += (Math.random()-0.5)*step;
-      const dx = p.x*2-1, dy = p.y*2-1, r = Math.hypot(dx,dy);
-      if (r > 1){ const s = (2-r)/r; p.x = 0.5 + dx*s*0.5; p.y = 0.5 + dy*s*0.5; }
-    }
-  const PL = 800, ox = (S-PL)/2, oy = 170;
-  x.fillStyle = 'rgba(242,239,233,.70)';
-  for (const p of pts) x.fillRect(ox + p.x*PL, oy + p.y*PL, 1.15, 1.15);
-  x.beginPath(); x.arc(S/2, oy + PL/2, PL/2, 0, 7);
-  x.strokeStyle = 'rgba(111,106,117,.22)'; x.lineWidth = 1; x.stroke();
+const GRAINS=9000;
+const sand=Array.from({length:GRAINS},()=>seed({}));
+const scatter=amt=>sand.forEach(p=>{if(Math.random()<amt)seed(p)});
 
-  x.textAlign = 'center';
-  x.fillStyle = '#f2efe9';
-  x.font = '300 92px ui-monospace, Menlo, monospace';
-  x.fillText(fmt(last.ms), S/2, 1090);
-  x.fillStyle = '#6f6a75';
-  x.font = '400 20px ui-monospace, Menlo, monospace';
-  x.fillText('A W A Y'.split('').join(' '), S/2, 1145);
-  x.fillText(`[ ${n} · ${m} ]`, S/2, 1200);
-  x.fillStyle = 'rgba(242,239,233,.5)';
-  x.font = '400 19px ui-monospace, Menlo, monospace';
-  x.fillText('THE COUNCIL OF SOVEREIGN CARE'.split('').join(' '), S/2, 1275);
+/* ══ INK ═══════════════════════════════════════════
+   Blur, then a noise-perturbed threshold, twice. Nearby grains merge
+   into clumped strokes with ragged edges — powder, not particles.     */
+function hash(x,y){const s=Math.sin(x*127.1+y*311.7)*43758.5453;return s-Math.floor(s)}
+function inkify(src,o){
+  const W=src.width,H=src.height;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d',{willReadFrequently:true});
+  x.filter=`blur(${o.blur||5}px)`;x.drawImage(src,0,0);x.filter='none';
+  const d=x.getImageData(0,0,W,H),a=d.data;
+  const t=o.threshold===undefined?0.24:o.threshold, soft=o.soft||0.13;
+  const ragged=o.ragged===undefined?0.34:o.ragged, ink=o.ink||[255,255,255];
+  for(let i=0,p=0;i<a.length;i+=4,p++){
+    const px=p%W,py=(p/W)|0;
+    let v=a[i+3]/255;
+    v*=1-ragged*0.5+ragged*hash(px*0.09,py*0.09);
+    let k=(v-t)/soft;k=k<0?0:k>1?1:k;k=k*k*(3-2*k);
+    a[i]=ink[0];a[i+1]=ink[1];a[i+2]=ink[2];a[i+3]=k*255;
+  }
+  x.putImageData(d,0,0);return c;
+}
+/* one plate, rendered into a local box sized to itself */
+function inkStamp(m,n,R,o){
+  o=o||{};
+  const blur=o.blur||5, S=Math.ceil(2*R+blur*8+20);
+  const raw=document.createElement('canvas');raw.width=raw.height=S;
+  const rx=raw.getContext('2d');
+  let pts;
+  if(o.live){ pts=sand; }
+  else { pts=Array.from({length:o.count||9000},()=>seed({}));
+         const f=field(m,n);
+         for(let it=0;it<(o.iters||300);it++){
+           const heat=0.052*(1-it/(o.iters||300)*0.55);
+           for(const p of pts){
+             let ix=(p.x*FN)|0,iy=(p.y*FN)|0;
+             if(ix<0)ix=0;else if(ix>=FN)ix=FN-1;
+             if(iy<0)iy=0;else if(iy>=FN)iy=FN-1;
+             const step=Math.max(0.0006,f[iy*FN+ix]*heat);
+             p.x+=(Math.random()-0.5)*step;p.y+=(Math.random()-0.5)*step;
+             const dx=p.x*2-1,dy=p.y*2-1,r=Math.sqrt(dx*dx+dy*dy);
+             if(r>1){const s=(2-r)/r;p.x=0.5+dx*s*0.5;p.y=0.5+dy*s*0.5}
+           }}}
+  rx.fillStyle='#fff';
+  const sz=o.size||1.5;
+  for(const p of pts) rx.fillRect(S/2-R+p.x*2*R, S/2-R+p.y*2*R, sz, sz);
+  const out=document.createElement('canvas');out.width=out.height=S;
+  const c=out.getContext('2d');
+  if(o.halo!==false){c.save();c.filter=`blur(${o.haloBlur||16}px)`;
+    c.globalAlpha=o.haloA||(night?0.24:0.13);c.drawImage(raw,0,0);c.restore();c.globalAlpha=1}
+  c.drawImage(inkify(raw,{blur:blur,threshold:o.threshold,soft:o.soft,
+    ragged:o.ragged,ink:o.ink||INK_RGB()}),0,0);
+  // the second pass darkens dense cores; on small stamps it floods them solid
+  if(o.core!==false)
+    c.drawImage(inkify(raw,{blur:blur*1.9,threshold:(o.threshold||0.24)*1.9,
+      soft:0.10,ragged:0.18,ink:o.ink||INK_RGB()}),0,0);
+  return out;
+}
 
-  cv.toBlob(async blob => {
-    const file = new File([blob], 'sovereign-care.png', { type:'image/png' });
-    if (navigator.canShare && navigator.canShare({ files:[file] })){
-      try { await navigator.share({ files:[file] }); return; } catch(err){}
-    }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'sovereign-care.png'; a.click();
-  }, 'image/png');
-});
-
-/* ══ THE PLATE ═════════════════════════════════════
-   Stochastic Chladni. Each grain steps randomly by an amount
-   proportional to how hard the plate is vibrating beneath it,
-   so grains freeze wherever the surface is still and the
-   nodal figure emerges on its own. Nobody draws it.
-   ═════════════════════════════════════════════════ */
-const cv = $('c'), ctx = cv.getContext('2d', { alpha:false });
-let W = 0, H = 0, DPR = 1;
+/* ══ RENDER ════════════════════════════════════════ */
+const cv=$('c'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
 function resize(){
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  W = cv.clientWidth; H = cv.clientHeight;
-  cv.width = W*DPR; cv.height = H*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  W=cv.clientWidth;H=cv.clientHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);
+  inkA=inkB=null;
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize',resize);
 
-/* Circular plate. n counts nodal rings, m counts radial sectors —
-   the rings-and-spokes rosette a real plate makes when it is bowed. */
-function chladni(x, y, n, m){
-  const dx = x*2-1, dy = y*2-1;
-  const r  = Math.hypot(dx, dy);
-  const th = Math.atan2(dy, dx);
-  // angular modes must stay whole or the field tears where atan2 wraps;
-  // the radial term keeps easing, so the plate re-settles instead of jumping
-  const ni = Math.round(n), mi = Math.round(m);
-  return Math.cos(n*Math.PI*r)*Math.cos(mi*th)
-       - 0.35*Math.cos(m*Math.PI*r)*Math.cos(ni*th);
+/* paper fibre, day mode only */
+let PAPER=null;
+function paperTile(){
+  if(PAPER)return PAPER;
+  const s=140,c=document.createElement('canvas');c.width=c.height=s;
+  const x=c.getContext('2d'),d=x.createImageData(s,s);
+  for(let i=0;i<d.data.length;i+=4){const n=Math.random();
+    d.data[i]=d.data[i+1]=d.data[i+2]=225+n*30;d.data[i+3]=Math.random()*30}
+  x.putImageData(d,0,0);return PAPER=c;
 }
 
-const GRAINS = 5200;
-/* uniform over the disc — sqrt keeps it from bunching in the middle */
-function seed(p){
-  const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
-  p.x = 0.5 + Math.cos(a)*r*0.5; p.y = 0.5 + Math.sin(a)*r*0.5;
-  return p;
+function plateGeom(){
+  // if the visible screen declares a .zone, centre the plate in it — that way
+  // type and figure can never collide however the layout reflows
+  const scr=document.querySelector('.screen.on');
+  const z=scr&&scr.querySelector('.zone');
+  if(z){const r=z.getBoundingClientRect();
+    return {cx:W/2, cy:r.top+r.height/2, R:Math.min(r.height*0.46, W*0.34)}}
+  return {cx:W/2, cy:H*0.46, R:Math.min(W,H)*0.30};
 }
-const sand = Array.from({length:GRAINS}, () => seed({ b: 0.35 + Math.random()*0.65 }));
-const scatter = amt => sand.forEach(p => { if (Math.random() < amt) seed(p); });
-
-let nn = 1, mm = 2;                       // eased toward the target harmonic
-
-// the five seats this one cannot reach alone
-const GHOSTS = 5;
-
 function draw(t){
   logic();
+  ctx.fillStyle=night?'#08080a':'#ece7dd';ctx.fillRect(0,0,W,H);
 
-  const live = state === 'holding' || state === 'wobble';
-  const el   = live ? Date.now() - startAt : 0;
-  const [tn, tm] = live ? MODES[modeIndex(el)] : MODES[0];
-  nn += (tn - nn) * 0.004;                // harmonics migrate slowly
-  mm += (tm - mm) * 0.004;
+  const showPlate = state!=='result' && state!=='figure' && state!=='history';
+  const live=state==='holding'||state==='lifted';
+  const sweep=state==='sweeping';
+  const el=live?Date.now()-startAt:0;
+  const tm=live?mFor(calm):(2+OPEN_OFFSET), tn=live?nFor(el):2;
+  const {cx,cy,R}=plateGeom();
+  const f=field(tm,tn);
+  const sweepK=sweep?Math.min(1,(now()-sweepAt)/SWEEP_MS):0;
 
-  // trail: grains accumulate into density instead of being redrawn
-  ctx.fillStyle = 'rgba(0,0,0,0.085)';
-  ctx.fillRect(0, 0, W, H);
-
-  const plate = Math.min(W, H) * (live ? 0.94 : 0.66);
-  const ox = (W - plate)/2, oy = (H - plate)/2;
-  const breath = Math.sin(t/2750)*0.5 + 0.5;          // ~5.5s
-  const amp    = 0.052 * (0.80 + 0.30*breath) * (live ? 1 : 1.5);
-  const floorStep = 0.0007 + strain * 0.030;          // agitation blurs the figure
-
-  for (const p of sand){
-    const v = Math.abs(chladni(p.x, p.y, nn, mm));
-    const step = Math.max(floorStep, v * amp);
-    p.x += (Math.random()-0.5)*step;
-    p.y += (Math.random()-0.5)*step;
-    // reflect at the rim rather than clamping, so nothing piles up on the edge
-    const dx = p.x*2-1, dy = p.y*2-1, r = Math.hypot(dx,dy);
-    if (r > 1){ const s = (2-r)/r; p.x = 0.5 + dx*s*0.5; p.y = 0.5 + dy*s*0.5; }
+  /* grains move every frame — cheap */
+  const breath=Math.sin(t/2750)*0.5+0.5;
+  const amp=0.052*(0.80+0.30*breath)*(live?1:1.2);
+  const floorStep=0.0007+strain*0.030+sweepK*0.075;
+  for(const p of sand){
+    let ix=(p.x*FN)|0,iy=(p.y*FN)|0;
+    if(ix<0)ix=0;else if(ix>=FN)ix=FN-1;
+    if(iy<0)iy=0;else if(iy>=FN)iy=FN-1;
+    const step=Math.max(floorStep,f[iy*FN+ix]*amp);
+    p.x+=(Math.random()-0.5)*step;p.y+=(Math.random()-0.5)*step;
+    const dx=p.x*2-1,dy=p.y*2-1,r=Math.sqrt(dx*dx+dy*dy);
+    if(r>1){const s=(2-r)/r;p.x=0.5+dx*s*0.5;p.y=0.5+dy*s*0.5}
   }
 
-  const bright = live ? 0.62 : 0.17;
-  const warm   = Math.min(1, strain*1.8);
-  ctx.fillStyle = `rgba(${Math.round(242 - warm*25)},${Math.round(239 - warm*101)},${Math.round(233 - warm*115)},${bright})`;
-  const sz = 1.05;
-  for (const p of sand){
-    ctx.globalAlpha = p.b * bright;
-    ctx.fillRect(ox + p.x*plate, oy + p.y*plate, sz, sz);
+  /* the ink is re-thresholded on a timer, not per frame, and crossfaded.
+     The sand settles slowly enough that ~4Hz is invisible, and the
+     threshold pass is far too expensive to run at 60fps on a phone. */
+  if(!inkB || t-inkAt>INK_MS){
+    inkA=inkB;
+    inkB=inkStamp(tm,tn,R,{live:true,size:1.5,blur:5,threshold:0.22,ragged:0.42,
+      ink:INK_RGB(),haloA:(night?0.24:0.13)*(live?1:0.5)});
+    inkAt=t;
   }
-  ctx.globalAlpha = 1;
+  const k=Math.min(1,(t-inkAt)/INK_MS);
+  if(!showPlate){ if(!night){ctx.save();ctx.globalAlpha=.55;
+      ctx.fillStyle=ctx.createPattern(paperTile(),'repeat');ctx.fillRect(0,0,W,H);ctx.restore()}
+    requestAnimationFrame(draw); return }
+  const dim=(live?1:0.55)*(1-sweepK*0.6);
+  if(inkA){ctx.globalAlpha=dim*(1-k);ctx.drawImage(inkA,cx-inkA.width/2,cy-inkA.height/2)}
+  ctx.globalAlpha=dim*(inkA?k:1);
+  ctx.drawImage(inkB,cx-inkB.width/2,cy-inkB.height/2);
+  ctx.globalAlpha=1;
 
-  // ── the rim of the plate
-  const cx = W/2, cy = H/2;
-  ctx.beginPath(); ctx.arc(cx, cy, plate/2, 0, 7);
-  ctx.strokeStyle = `rgba(111,106,117,${0.10 + 0.05*breath})`;
-  ctx.lineWidth = 1; ctx.stroke();
-
-  // ── unclaimed seats, on hairlines beyond the rim
-  const gr = Math.min(W,H)*0.475;
-  for (let i=0;i<GHOSTS;i++){
-    const a = -Math.PI/2 + (i+1)*(Math.PI*2/(GHOSTS+1));
-    const gx = cx + Math.cos(a)*gr, gy = cy + Math.sin(a)*gr;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a)*plate*0.5, cy + Math.sin(a)*plate*0.5);
-    ctx.lineTo(gx, gy);
-    ctx.strokeStyle = `rgba(111,106,117,${0.055 + 0.03*breath})`;
-    ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(gx, gy, 2, 0, 7);
-    ctx.fillStyle = `rgba(111,106,117,${0.22 + 0.14*breath})`; ctx.fill();
-  }
+  if(!night){ctx.save();ctx.globalAlpha=.55;
+    ctx.fillStyle=ctx.createPattern(paperTile(),'repeat');ctx.fillRect(0,0,W,H);ctx.restore()}
 
   requestAnimationFrame(draw);
 }
 
-/* ── weather ─────────────────────────────────────── */
-$('weather').style.background =
-  'radial-gradient(120% 78% at 50% 108%, rgba(217,138,118,.50) 0%,' +
-  ' rgba(150,76,96,.26) 32%, rgba(58,42,92,.14) 60%, rgba(0,0,0,0) 82%)';
+/* ── sun / moon toggle ─────────────────────────────── */
+function sunStamp(R){
+  return inkStamp(6,1,R,{count:5000,iters:280,blur:2.4,threshold:0.20,soft:0.13,
+    ragged:0.32,ink:INK_RGB(),halo:false,size:1.2});
+}
+function moonStamp(R){
+  const S=Math.ceil(2*R+2.4*8+20);
+  const raw=document.createElement('canvas');raw.width=raw.height=S;
+  const rx=raw.getContext('2d');
+  const pts=Array.from({length:5000},()=>seed({}));
+  const f=field(0,2);
+  for(let it=0;it<260;it++){const heat=0.052*(1-it/260*0.55);
+    for(const p of pts){let ix=(p.x*FN)|0,iy=(p.y*FN)|0;
+      if(ix<0)ix=0;else if(ix>=FN)ix=FN-1;if(iy<0)iy=0;else if(iy>=FN)iy=FN-1;
+      const step=Math.max(0.0006,f[iy*FN+ix]*heat);
+      p.x+=(Math.random()-0.5)*step;p.y+=(Math.random()-0.5)*step;
+      const dx=p.x*2-1,dy=p.y*2-1,r=Math.sqrt(dx*dx+dy*dy);
+      if(r>1){const s=(2-r)/r;p.x=0.5+dx*s*0.5;p.y=0.5+dy*s*0.5}}}
+  rx.fillStyle='#fff';
+  const ox=S/2+R*0.46, oy=S/2-R*0.10, orr=R*0.88;
+  for(const p of pts){const gx=S/2-R+p.x*2*R, gy=S/2-R+p.y*2*R;
+    if(Math.hypot(gx-ox,gy-oy)<=orr)continue;
+    rx.fillRect(gx,gy,1.2,1.2)}
+  const out=document.createElement('canvas');out.width=out.height=S;
+  const c=out.getContext('2d');
+  c.drawImage(inkify(raw,{blur:2.4,threshold:0.20,soft:0.13,ragged:0.32,ink:INK_RGB()}),0,0);
+  return out;
+}
+function drawToggle(){
+  const cvs=$('toggle');if(!cvs)return;
+  const x=cvs.getContext('2d'),W2=cvs.width,H2=cvs.height;
+  x.clearRect(0,0,W2,H2);
+  const ink=INK_RGB(), col=`rgb(${ink[0]},${ink[1]},${ink[2]})`;
+  const w=W2-8,h=H2-8,r=h/2,X=4,Y=4;
+  x.globalAlpha=.34;x.strokeStyle=col;x.lineWidth=2;
+  x.beginPath();x.moveTo(X+r,Y);x.lineTo(X+w-r,Y);
+  x.quadraticCurveTo(X+w,Y,X+w,Y+r);x.quadraticCurveTo(X+w,Y+h,X+w-r,Y+h);
+  x.lineTo(X+r,Y+h);x.quadraticCurveTo(X,Y+h,X,Y+r);x.quadraticCurveTo(X,Y,X+r,Y);
+  x.closePath();x.stroke();x.globalAlpha=1;
+  const sx=X+w*0.27, mx=X+w*0.73, cy=Y+h/2;
+  x.globalAlpha=.14;x.fillStyle=col;
+  x.beginPath();x.arc(night?mx:sx,cy,h*0.40,0,7);x.fill();x.globalAlpha=1;
+  const sun=sunStamp(26), moon=moonStamp(24);
+  x.globalAlpha=night?0.42:1;x.drawImage(sun,sx-sun.width/2,cy-sun.height/2);
+  x.globalAlpha=night?1:0.42;x.drawImage(moon,mx-moon.width/2,cy-moon.height/2);
+  x.globalAlpha=1;
+}
+$('toggle').addEventListener('click',e=>{
+  e.stopPropagation();
+  const rect=e.currentTarget.getBoundingClientRect();
+  applyTheme(e.clientX-rect.left > rect.width/2);
+});
 
-/* ── boot ────────────────────────────────────────── */
-resize();
-requestAnimationFrame(draw);
-$('ritualLabel').textContent = GALLERY ? `[ seat ${SEAT} ]` : `[ ${RITUAL} ]`;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* ── the plate you keep ────────────────────────────── */
+$('toFigure').addEventListener('click',e=>{
+  e.stopPropagation();
+  const rec=pending||{ms:0,m:2,n:2};
+  const S=1080,cvx=document.createElement('canvas');cvx.width=S;cvx.height=1350;
+  const x=cvx.getContext('2d');
+  x.fillStyle=night?'#08080a':'#ece7dd';x.fillRect(0,0,S,1350);
+  const st=inkStamp(rec.m,rec.n,330,{count:26000,iters:320,blur:7,threshold:0.23,
+    ragged:0.44,ink:INK_RGB(),haloA:night?0.22:0.12,haloBlur:22,size:1.8});
+  x.drawImage(st,S/2-st.width/2,470-st.height/2);
+  x.textAlign='center';
+  const inkc=night?'#f6f4ee':'#14120f', dimc=night?'rgba(246,244,238,.5)':'rgba(20,18,15,.52)';
+  x.fillStyle=inkc;x.font='400 40px "LM Dunhill","LM Roman",Georgia,serif';
+  x.fillText('The Council of Sovereign Care',S/2,120);
+  x.strokeStyle=dimc;x.lineWidth=1;
+  x.beginPath();x.moveTo(120,152);x.lineTo(S-120,152);x.stroke();
+  x.font='400 112px "LM Dunhill","LM Roman",Georgia,serif';
+  x.fillText(fmt(rec.ms),S/2,1010);
+  x.fillStyle=dimc;x.font='400 26px ui-monospace,Menlo,monospace';
+  x.fillText('A W A Y',S/2,1064);
+  x.fillText('m '+rec.m+'  ·  n '+rec.n,S/2,1112);
+  x.fillStyle=inkc;x.font='italic 400 30px "LM Roman",Georgia,serif';
+  x.fillText('a map of what held still',S/2,1224);
+  cvx.toBlob(b=>{
+    cardBlob=b;$('card').src=URL.createObjectURL(b);
+    const f=new File([b],'f.png',{type:'image/png'});
+    $('saveHint').textContent=(navigator.canShare&&navigator.canShare({files:[f]}))
+      ?'':'or press and hold the image to save it';
+    state='figure';show('figure');
+  },'image/png');
+});
+$('save').addEventListener('click',async e=>{
+  e.stopPropagation();if(!cardBlob)return;
+  const file=new File([cardBlob],'sovereign-care.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file]});return}catch(err){}}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(cardBlob);a.download='sovereign-care.png';a.click();
+});
+
+/* ── boot ──────────────────────────────────────────── */
+booted=true;
+(function presettle(){                 // ~120ms once, so the app never opens on noise
+  const f=field(2+OPEN_OFFSET,2);
+  for(let it=0;it<320;it++){
+    const heat=0.052*(1-it/320*0.55);
+    for(const p of sand){
+      let ix=(p.x*FN)|0,iy=(p.y*FN)|0;
+      if(ix<0)ix=0;else if(ix>=FN)ix=FN-1;
+      if(iy<0)iy=0;else if(iy>=FN)iy=FN-1;
+      const step=Math.max(0.0007,f[iy*FN+ix]*heat);
+      p.x+=(Math.random()-0.5)*step;p.y+=(Math.random()-0.5)*step;
+      const dx=p.x*2-1,dy=p.y*2-1,r=Math.sqrt(dx*dx+dy*dy);
+      if(r>1){const s=(2-r)/r;p.x=0.5+dx*s*0.5;p.y=0.5+dy*s*0.5}
+    }}
+})();
+resize();renderIntro();drawToggle();requestAnimationFrame(draw);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

@@ -6,7 +6,10 @@ const FILES = [
   './index.html',
   './manifest.webmanifest',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './fonts/lmdunhill.woff2',
+  './fonts/lmroman.woff2',
+  './fonts/lmroman-italic.woff2'
 ];
 
 self.addEventListener('install', e => {

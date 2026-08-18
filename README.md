@@ -15,19 +15,62 @@ Saanchie Goswamy · v1 (solo path)
 - Detects a lift (tilt past 20° held for 300ms) and gives you **12 seconds to put it back**
 - Ends the session on a screen touch, an app switch, or the grace window running out
 - Records the duration honestly — **you are never zeroed out for stopping**
-- Keeps duration, streak, longest hold, and the harmonic you reached
+- Keeps duration, streak, longest hold, and the plate you reached
 - Exports a shareable card and your full history as JSON
+
+### Look
+
+Black and white only, in two modes — **paper stock with black powder, or black ground with white
+powder**. Not two themes: one design, two inks. The sun/moon toggle on the opening screen switches
+them and remembers your choice; first run follows your system setting.
+
+Type is **Latin Modern Roman** — the face scientific papers are typeset in, which is the right
+register for an experiment from 1787. The **Dunhill** cut, with its tall ascenders, carries the
+title and the duration. Three subsetted woff2 cuts ship in `fonts/` (~27KB total, GUST licence
+included). They are self-hosted because Latin Modern is not installed on any phone.
+
+**The sun and moon icons are Chladni plates too** — the sun is a mode with six nodal diameters and
+no rings, the moon a plain disc bitten by a second circle. Same engine as the artwork, so they
+cannot drift from it.
 
 ### The figure
 
-The screen is a **Chladni plate** — the sand-on-a-vibrating-surface experiment. Each grain
-random-walks by an amount proportional to how hard the plate is vibrating beneath it, so grains
-freeze wherever the surface is still and the nodal figure emerges on its own. Nobody draws it.
+The screen is a **Chladni plate** — the sand-on-a-vibrating-surface experiment, solved properly:
 
-The pattern is a map of what held still. It takes real time to settle, and the harmonic climbs
-with duration — 1·2 at the start, 6·7 after an hour — so the figure grows more intricate the
-longer you stay away. Agitation scatters the sand off the nodes. Colour arrives only at depth,
-as weather rising from the bottom of the frame.
+```
+u(r, θ) = J_m(α_mn · r) · cos(m θ)
+```
+
+Bessel of the first kind, where `α_mn` is the n-th zero of `J_m`. Each grain random-walks by an
+amount proportional to how hard the plate is vibrating beneath it, so grains freeze wherever the
+surface is still and the nodal figure emerges on its own. Nobody draws it. Because the ring radii
+come from Bessel zeros they are **unevenly spaced**, which is the signature of a real plate.
+
+The grains are then blurred and pushed through a noise-perturbed threshold, so nearby particles
+merge into clumped strokes with ragged wet edges — powder on a plate rather than a particle
+system. That threshold is far too expensive to run every frame on a phone, so **the ink is
+re-rendered about four times a second and crossfaded**; the sand settles slowly enough that this
+is invisible. `INK_MS` at the top of the script controls it.
+
+Three independent axes:
+
+| | drives | reads as |
+|---|---|---|
+| **n** — nodal rings | how long you have been away | concentric rings, accumulating |
+| **m** — nodal diameters | how *still* you have been | radial divisions; fidget and it drops |
+| **orbit** | how many are holding | v2 — the parameter is wired, the sync layer is not |
+
+Two people away the same hour get different figures depending on how steady they were.
+A different mode is drawn each time the app opens.
+
+### Sound and the ending
+
+A struck gong on begin — six inharmonic partials with a long decay — then a low drone that
+fades to nothing over the first few minutes. Synthesised in Web Audio, no files.
+
+When a session ends the figure is **swept away** over four and a half seconds before the
+numbers appear, the way a sand mandala is destroyed on completion. `SWEEP_MS` at the top of
+the script controls it; set it to 0 to skip.
 
 **Everything is stored in this device's localStorage. Nothing is ever uploaded.
 There is no account, no analytics, and no backend.**
@@ -42,12 +85,12 @@ simultaneous shattering, and persisted records are v2. See "Later" below.
 
 ## Deploy
 
-Four files, no build step. Works on Vercel, GitHub Pages, Netlify, or any static host.
+No build step, no dependencies. Works on Vercel, GitHub Pages, Netlify, or any static host.
 
 ### Vercel
 
 1. Go to vercel.com → **Add New → Project → Deploy without Git** (or drag this folder in)
-2. Drop the whole folder. No framework, no build command, no output directory.
+2. Drop the whole folder — **including `fonts/`**. No framework, no build command, no output directory.
 3. Copy the **production** URL.
 
 > ### ⚠️ Read this before writing any NFC tag
